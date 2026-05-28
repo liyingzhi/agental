@@ -798,7 +798,7 @@ context including any pending changes, creations, or deletions."
          (successp t)
          (res))
     (setq res
-          (if (and search-path (file-directory-p search-path))
+          (if search-path
               (condition-case err
                   (let* ((rg-command (agental-tools-ripgrep-search pattern
                                                                    search-path
@@ -823,7 +823,7 @@ context including any pending changes, creations, or deletions."
                  (setq successp nil)
                  (error-message-string err)))
             (setq successp nil)
-            (format "Path %s does not exist or not dir" search-path)))
+            (format "Path %s does not exist" search-path)))
     (agental-tool--insert-tool-call (format "~search~ (%s) in %s%s"
                                             pattern
                                             (if (and search-path (file-exists-p search-path))
