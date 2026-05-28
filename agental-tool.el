@@ -212,17 +212,24 @@ properties persist through refontification."
                'font-lock-face face-prop org-buffer))
             (setq pos (or next (1- (point-max))))))))))
 
-(defun agental-tool--resolve-path (path)
+(defun agental-tool--resolve-path (path &optional no-check)
   "Resolve PATH relative to workspace root.
 If PATH is absolute, return it as-is. If PATH is relative and a project context
 is available, expand it relative to the project directory. Otherwise return
-PATH."
+PATH.
+
+When NO-CHECK is nil (default), check that the resolved file exists and return
+nil if it does not.  When NO-CHECK is non-nil, return the resolved path without
+checking for existence."
   (let* ((project-metadata (and agental--context
                                 (agental-context-metadata-project-metadata agental--context)))
          (project-dir (cdr project-metadata)))
-    (if (and project-dir (not (file-name-absolute-p path)))
-        (expand-file-name path project-dir)
-      path)))
+    (when (and project-dir (not (file-name-absolute-p path)))
+      (setq path (expand-file-name path project-dir)))
+    (if no-check
+        path
+      (when (file-exists-p path)
+        path))))
 
 
 ;;; glob-tool
@@ -336,7 +343,7 @@ Uses Emacs' file-expand-wildcards with .gitignore and .aiignore support."
                 :description "The glob pattern to match, e.g. '**/*.el' or '*.org'")
         '(:name "dir-path"
                 :type string
-                :description "directory path to search within, relative to workspace root")
+                :description "directory path to search within, relative to workspace root. E.g. '.' for workspace root, 'src' for src directory, 'lisp/org' for nested dir.")
         '(:name "case-sensitive"
                 :type boolean
                 :description "Whether the search is case-sensitive (default: false)"
@@ -463,7 +470,7 @@ Directories are listed first, then files sorted alphabetically."
  :args (list
         '(:name "dir-path"
                 :type string
-                :description "The path to the directory to list, relative to workspace root")
+                :description "The path to the directory to list, relative to project root, e.g. '.' for workspace root, 'src' for src directory, 'lisp/org' for nested dir.")
         '(:name "ignore"
                 :type array
                 :description "List of glob patterns to ignore"
@@ -706,7 +713,7 @@ Supports line numbers display in cat -n style."
  :confirm nil
  :include nil
  :args
- `((:name "path" :type string :description "Path to the file, relative to workspace root")
+ `((:name "path" :type string :description "Path to the file, relative to workspace root, e.g. 'src/main.py' or 'README.md'")
    (:name
     "offset"
     :type number
@@ -849,7 +856,7 @@ context including any pending changes, creations, or deletions."
     "path"
     :type string
     :optional t
-    :description "Directory or file to search, relative to workspace root")
+    :description "Directory or file to search, relative to workspace root, e.g. '.' for whole project, 'src' for src dir, 'src/main.py' for single file")
    (:name
     "file_regexp"
     :type string
@@ -997,7 +1004,7 @@ Returns a string containing the file's outline with function/class names and the
 The outline is generated using the most appropriate parsing engine (treesit, semantic, or imenu).
 The output format is: [Engine: engine_name] followed by a pretty-printed list of tags."
  :args (list
-        '(:name "path" :type string :description "Path to the file to analyze, relative to workspace root"))
+        '(:name "path" :type string :description "Path to the file to analyze, relative to workspace root, e.g. 'src/main.py' or 'agental-tool.el'"))
  :category "agental")
 
 
@@ -1349,7 +1356,7 @@ Returns success or error message based on user action and edit results."
  :confirm nil
  :include nil
  :args
- `((:name "path" :type string :description "Path to the file in workspace, relative to workspace root")
+ `((:name "path" :type string :description "Path to the file in workspace, relative to workspace root, e.g. 'src/main.py' or 'README.md'")
    (:name
     "edits"
     :type array
@@ -1498,7 +1505,7 @@ CONTENT is the complete new content for the file.
 Use with caution as it will overwrite existing files without warning.
 Handles text content with proper encoding."
   (condition-case err
-      (let* ((full-path (agental-tool--resolve-path path)))
+      (let* ((full-path (agental-tool--resolve-path path t)))
         (let* ((info (gptel-fsm-info gptel--fsm-last))
                (where (or (plist-get info :tracking-marker)
                           (plist-get info :position))))
@@ -1520,7 +1527,7 @@ Handles text content with proper encoding."
   "Requires user approval before writing (C-c C-c to approve, C-c C-k to reject).")
  :confirm nil
  :include nil
- :args '((:name "path" :type string :description "Path to the file, relative to workspace root")
+ :args '((:name "path" :type string :description "Path to the file, relative to workspace root, e.g. 'src/main.py' or 'README.md'")
          (:name
           "content"
           :type string
