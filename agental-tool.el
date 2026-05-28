@@ -496,7 +496,7 @@ Directories are listed first, then files sorted alphabetically."
 ;; tools in this package to limit memory usage when processing large files."
 ;;   :type 'number)
 
-(defcustom agental-tool-max-read-length 100
+(defcustom agental-tool-max-read-length 500
   "Maximum number of line to read from a file.
 
 Non-nil means read at most this many characters from any file. If nil, read the
