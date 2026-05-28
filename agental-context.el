@@ -83,6 +83,13 @@ N-CHARS is max size."
          (function (agental-context--function))
          (name (buffer-name (current-buffer)))
          (path (buffer-file-name (current-buffer)))
+         (project-metadata (agental-context-project-content))
+         (display-path (cond
+                        ((and path project-metadata)
+                         (file-relative-name path (cdr project-metadata)))
+                        (path
+                         (file-truename path))
+                        (t "")))
          (prompts (list (if thing
                             (format "Cursor point (%s)" thing)
                           "")
@@ -91,7 +98,7 @@ N-CHARS is max size."
                           "")
                         (format "Cursor buffer name (%s)" name)
                         (if path
-                            (format "Cursor file path (%s)" (file-truename path))
+                            (format "Cursor file path (%s)" display-path)
                           ""))))
     (when prompts
       (format "[%s]"
@@ -203,7 +210,10 @@ CONTEXT is `w/agental-context-metadata'."
                (buffer-content (plist-get workspace :buffer-content)))
           (insert "WORKSPACE CONTEXT:\n")
           (insert (format "Buffer: %s\n" name))
-          (when abs-path (insert (format "Abs path: %s\n" abs-path)))
+          (if project-metadata
+              (let ((rel-path (plist-get workspace :rel-path)))
+                (when rel-path (insert (format "Buffer relative project root path: %s\n" rel-path))))
+            (when abs-path (insert (format "Abs path: %s\n" abs-path))))
           (insert (format "Cursor line: %s\n" cursor-line))
           (insert (format "Function or Heading: %s\n\n" outline))
           (when buffer-content
