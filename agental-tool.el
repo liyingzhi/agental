@@ -292,7 +292,7 @@ first). If no files are found, returns nil and displays a message."
   (let* ((dir (agental-tool--resolve-path dir-path))
          (successp t)
          (res))
-    (if (file-directory-p dir)
+    (if (not (file-directory-p dir))
         (setq successp nil
               res (format "Directory does not exist: %s" dir))
       (let* ((default-directory (file-name-as-directory dir))
