@@ -340,7 +340,7 @@ Uses Emacs' file-expand-wildcards with .gitignore and .aiignore support."
  :args (list
         '(:name "pattern"
                 :type string
-                :description "The glob pattern to match, e.g. '**/*.el' or '*.org'")
+                :description "The glob pattern to match, e.g. 'src/**/*.el' or '*.org'")
         '(:name "dir-path"
                 :type string
                 :description "directory path to search within, relative to workspace root. E.g. '.' for workspace root, 'src' for src directory, 'lisp/org' for nested dir.")
