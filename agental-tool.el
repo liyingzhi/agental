@@ -44,6 +44,9 @@ interacting with the agent."
                  (const :tag "Never" nil))
   :group 'agental)
 
+(defvar agental--tool-subagent-active nil
+  "Non-nil when a subagent's tool is currently being dispatched.")
+
 (defconst agental-tool--hrule
   (propertize "\n" 'face '(:inherit shadow :underline t :extend t)))
 
@@ -53,11 +56,10 @@ interacting with the agent."
 When `agental-tool-show-tool-call' is:
 - t: always show
 - nil: never show
-- auto: show only not in subagent"
+- auto: show only when not in a subagent tool dispatch"
   (when agental-tool-show-tool-call
     (or (eq agental-tool-show-tool-call t)
-        (let* ((info (gptel-fsm-info gptel--fsm-last)))
-          (not (plist-get info :subagent))))))
+        (not agental--tool-subagent-active))))
 
 (defun agental-tool--insert-tool-call (header show-mode res successp)
   "Insert a formatted tool call result into the GPTel buffer.
@@ -1711,12 +1713,22 @@ cleanup."
 (defvar agental-tool-request--handlers
   `((WAIT ,#'agental-tool--indicate-wait
           ,#'gptel--handle-wait)
-    (TOOL ,#'gptel--handle-pre-tool
+    (TPRE ,#'gptel--handle-pre-tool ,#'gptel--fsm-transition)
+    (TOOL ,#'agental-tool--enter-subagent-tool
           ,#'agental-tool--indicate-tool-call
           ,#'gptel--handle-tool-use)
-    (TRET ,#'gptel--handle-post-tool
+    (TRET ,#'agental-tool--exit-subagent-tool
+          ,#'gptel--handle-post-tool
           ,#'gptel--handle-tool-result))
   "See `gptel-request--handlers'.")
+
+(defun agental-tool--enter-subagent-tool (_fsm)
+  "Mark that we are entering tool dispatch from a subagent."
+  (setq agental--tool-subagent-active t))
+
+(defun agental-tool--exit-subagent-tool (_fsm)
+  "Mark that we are exiting tool dispatch from a subagent."
+  (setq agental--tool-subagent-active nil))
 
 (defun agental-tool--task-preview-setup (arg-values _info)
   "Preview setup for Agent.
@@ -1828,8 +1840,9 @@ PROMPT is the detailed prompt instructing the agent on what is required."
       (gptel--update-status " Calling Agent..." 'font-lock-escape-face)
       (gptel-request prompt
         :context (agental-tool--task-overlay where agent-type description)
-        :fsm (gptel-make-fsm :handlers agental-tool-request--handlers
-                             :info (list :subagent t))
+        :fsm (gptel-make-fsm :table gptel-send--transitions
+                             :handlers agental-tool-request--handlers)
+        :transforms (list #'gptel--transform-add-context)
         :callback
         (lambda (resp info)
           (let ((ov (plist-get info :context)))
