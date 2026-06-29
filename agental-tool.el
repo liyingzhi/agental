@@ -1336,7 +1336,7 @@ operation fails."
   (condition-case err
       (let* ((full-path (agental-tool--resolve-path path)))
         (pcase-let* ((`(,content . ,new-content) (agental-tool--edit-file full-path edits))
-                     (diff-text (agental-tool--generate-patch-diff path content new-content))
+                     (diff-text (agental-tool--generate-patch-diff full-path content new-content))
                      (info (gptel-fsm-info gptel--fsm-last))
                      (where (or (plist-get info :tracking-marker)
                                 (plist-get info :position))))
