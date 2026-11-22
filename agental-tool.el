@@ -332,6 +332,7 @@ first). If no files are found, returns nil and displays a message."
 ;; Register the tool with GPTel
 (gptel-make-tool
  :name "find_files"
+ :include t
  :function #'agental-tool-glob-tool
  :description
  "Find files matching a given glob pattern using Emacs' file-expand-wildcards.
@@ -462,6 +463,7 @@ Arguments:
 ;; Register with GPTel
 (gptel-make-tool
  :name "list_directory"
+ :include t
  :function #'agental-tool-ls-tool
  :description
  "List the names of files and subdirectories directly within a specified directory path.
@@ -703,6 +705,7 @@ found in the workspace."
 
 (gptel-make-tool
  :name "read_file_in_workspace"
+ :include t
  :function #'agental-tool-read-file-tool
  :description
  (format "Reads and returns the content of a specified file.
@@ -843,6 +846,7 @@ context including any pending changes, creations, or deletions."
 
 (gptel-make-tool
  :name "search_in_workspace"
+ :include t
  :function #'agental-tool-search-tool
  :description
  (concat
@@ -998,6 +1002,7 @@ containing the file's outline with function/class names and their line numbers."
 
 (gptel-make-tool
  :name "get_file_outline"
+ :include t
  :function #'agental-tool-get-file-outline-tool
  :description
  "Get the outline (structure) of a file.
@@ -1346,6 +1351,7 @@ operation fails."
 
 (gptel-make-tool
  :name "edit_file_in_workspace"
+ :include t
  :function #'agental-tool-edit-file-tool
  :description
  "Make multiple exact string replacements in a single file.
@@ -1517,6 +1523,7 @@ Handles text content with proper encoding."
 
 (gptel-make-tool
  :name "write_file_in_workspace"
+ :include t
  :function #'agental-tool-write-file-tool
  :description
  (concat
@@ -1622,6 +1629,7 @@ COUNT is the number of results to return (default 5)."
 
 (gptel-make-tool
  :name "WebSearch"
+ :include t
  :function 'agental-tool--web-search-eww
  :description "Search the web for the first five results to a query.  The query can be an arbitrary string.  Returns the top five results from the search engine as a list of plists.  Each object has the keys `:url` and `:excerpt` for the corresponding search result.
 
@@ -1697,6 +1705,7 @@ cleanup."
 (gptel-make-tool
  :function #'agental-tool--read-url
  :name "WebFetch"
+ :include t
  :description "Fetch and read the contents of a URL.
 
 - Returns the text of the URL (not HTML) formatted for reading.
@@ -1876,6 +1885,7 @@ Error details: %S"
 
 (gptel-make-tool
  :name "RunAgent"
+ :include t
  :description "Launch a specialized agent to handle complex, multi-step tasks autonomously.  \
 Agents run independently and return results in one message.  \
 Use for open-ended searches, complex research, or when uncertain about finding results in first few tries."
