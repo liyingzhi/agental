@@ -171,11 +171,16 @@ already contains content, the prompt is appended at the end."
                            desc))))))
          (preset (completing-read "Select main preset: " gptel--known-presets nil t))
          (cursor-context (agental-context-cursor-prompt))
-         (message (read-string (format "%s\nInput: @%s "
-                                       (propertize cursor-context
-                                                   'face 'font-lock-comment-face)
-                                       preset)
-                               nil nil nil t))
+         (message (let ((minibuffer-setup-hook
+                         (cons (lambda ()
+                                 (add-hook 'completion-at-point-functions
+                                           #'gptel-preset-capf nil t))
+                               minibuffer-setup-hook)))
+                    (read-string (format "%s\nInput: @%s "
+                                         (propertize cursor-context
+                                                     'face 'font-lock-comment-face)
+                                         preset)
+                                 nil nil nil t)))
          (gptel-display-buffer-action '(display-buffer-reuse-window
                                         (body-function . select-window)))
          (buffer-name "*global-chat*")
@@ -204,10 +209,15 @@ already contains content, the prompt is appended at the end."
                                 desc))))))
               (preset (completing-read "Select Project preset: " gptel--known-presets nil t))
               (cursor-context (agental-context-cursor-prompt))
-              (message (read-string (format "%s\nInput: @%s "
-                                            (propertize cursor-context
-                                                        'face 'font-lock-comment-face)
-                                            preset) nil nil t))
+              (message (let ((minibuffer-setup-hook
+                              (cons (lambda ()
+                                      (add-hook 'completion-at-point-functions
+                                                #'gptel-preset-capf nil t))
+                                    minibuffer-setup-hook)))
+                         (read-string (format "%s\nInput: @%s "
+                                              (propertize cursor-context
+                                                          'face 'font-lock-comment-face)
+                                              preset) nil nil t)))
               (gptel-display-buffer-action '(display-buffer-reuse-window
                                              (body-function . select-window)))
               (buffer-name (format "*%s-chat %s*" name root-dir))
