@@ -71,31 +71,70 @@ SUCCESSP is non-nil if the tool call succeeded.
 Return RES."
   (when (agental-tool--check-show-tool-call)
     (let* ((info (gptel-fsm-info gptel--fsm-last))
-           (where (or (plist-get info :tracking-marker)
-                      (plist-get info :position)
-                      (plist-get info :reasoning-marker)))
-           (res-start))
-      (save-excursion
-        (goto-char where)
-        (insert
-         (propertize (concat (unless (and (bolp) (eolp))
-                               "\n\n")
-                             "=execute:= " header)
-                     'gptel 'ignore))
-        (setq res-start (point))
-        (insert
-         (propertize (concat "\n"
-                             (if successp
-                                 (concat "#+begin_src " show-mode "\n"
-                                         res
-                                         "\n"
-                                         "#+end_src")
-                               (concat "Error: " res))
-                             "\n\n")
-                     'gptel 'ignore))
-        (goto-char res-start)
-        (forward-line)
-        (ignore-errors (when (looking-at-p "^#\\+begin_src") (org-cycle))))))
+           ;; Use the function gptel itself uses to insert streaming chunks:
+           ;; it creates/advances `:tracking-marker' and never adds a
+           ;; separator after the first chunk.
+           (insert-fn (if (plist-get info :stream)
+                          #'gptel-curl--stream-insert-response
+                        #'gptel--insert-response)))
+      ;; Insert through gptel's own insertion function.  It unlocks
+      ;; `:tracking-marker', inserts at it, advances it past the inserted text
+      ;; and locks it again, so later streaming output lands below this text
+      ;; (a plain `insert' leaves the marker in front of it, pushing streaming
+      ;; output above it and stranding the tool call info at the buffer end).
+      ;;
+      ;; Deliberately keep `:reasoning-block' at `in': reasoning models make
+      ;; tool calls before emitting text, so the call is part of the reasoning
+      ;; turn, and the reasoning must keep streaming into the same block after
+      ;; the tool result instead of being suppressed.
+      (let* ((where (or (plist-get info :tracking-marker)
+                        (plist-get info :position)
+                        (plist-get info :reasoning-marker)))
+             ;; gptel's own separator is bound to "" below, so we add the
+             ;; paragraph break ourselves: a newline when there is no blank
+             ;; line yet, and a full blank line when not at beginning of line.
+             (prefix (when (and (markerp where) (marker-buffer where))
+                       (with-current-buffer (marker-buffer where)
+                         (save-excursion
+                           (goto-char where)
+                           (cond ((bobp) "")
+                                 ((not (bolp)) "\n\n")
+                                 ((not (eolp)) "\n")
+                                 ((and (> (point) 1)
+                                       (not (eq (char-before (1- (point))) ?\n)))
+                                  "\n")
+                                 (t "")))))))
+        (let ((gptel-response-separator ""))
+          (funcall insert-fn
+                   (propertize (concat prefix
+                                       "=execute:= " header
+                                       "\n"
+                                       (if successp
+                                           (concat "#+begin_src " show-mode "\n"
+                                                   res
+                                                   "\n"
+                                                   "#+end_src")
+                                         (concat "Error: " res))
+                                       "\n\n")
+                               'gptel 'ignore)
+                   info t))
+        ;; Keep `:reasoning-marker' in sync with the inserted text so the
+        ;; reasoning block keeps growing below it.
+        (when (and (eq (plist-get info :reasoning-block) 'in)
+                   (plist-get info :tracking-marker))
+          (let ((reasoning-marker (plist-get info :reasoning-marker)))
+            (if reasoning-marker
+                (move-marker reasoning-marker (plist-get info :tracking-marker))
+              (plist-put info :reasoning-marker
+                         (copy-marker (plist-get info :tracking-marker) nil))))))
+      ;; Fold the inserted source block.
+      (when successp
+        (save-excursion
+          (goto-char (or (plist-get info :tracking-marker) (point-max)))
+          (when (search-backward-regexp "^=execute:= " nil t)
+            (forward-line 1)
+            (ignore-errors
+              (when (looking-at-p "^#\\+begin_src") (org-cycle))))))))
   res)
 
 (defun agental-tool--clear-overlay (ov)
