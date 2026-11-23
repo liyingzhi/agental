@@ -44,6 +44,33 @@ interacting with the agent."
                  (const :tag "Never" nil))
   :group 'agental)
 
+(defcustom agental-tool-include nil
+  "Value used for the `:include' slot of Agental\='s `gptel-make-tool' calls.
+
+This mirrors the `:include' keyword of `gptel-make-tool' and controls
+whether gptel inserts a tool call and its result into the chat buffer
+(see `gptel-include-tool-results').  Possible values:
+
+- t: include the tool call and its result in the buffer.
+- `call': include the tool call, but not its result.
+- nil: do not insert the tool call into the buffer at all.
+
+The tool result is still sent back to the model in every case; this
+switch only affects what is recorded in the buffer.
+
+Tools are registered with gptel when this file is loaded, so set this
+before loading `agental-tool' (e.g. with `setq' in your init file), or
+call `agental-tool-apply-include' afterwards to update the tools that
+are already registered."
+  :type '(choice (const :tag "Include call and result" t)
+                 (const :tag "Include call only" call)
+                 (const :tag "Exclude from buffer" nil))
+  :set (lambda (symbol value)
+         (set-default symbol value)
+         (when (fboundp 'agental-tool--apply-include)
+           (agental-tool--apply-include value)))
+  :group 'agental)
+
 (defvar agental--tool-subagent-active nil
   "Non-nil when a subagent's tool is currently being dispatched.")
 
@@ -371,7 +398,7 @@ first). If no files are found, returns nil and displays a message."
 ;; Register the tool with GPTel
 (gptel-make-tool
  :name "find_files"
- :include t
+ :include agental-tool-include
  :function #'agental-tool-glob-tool
  :description
  "Find files matching a given glob pattern using Emacs' file-expand-wildcards.
@@ -502,7 +529,7 @@ Arguments:
 ;; Register with GPTel
 (gptel-make-tool
  :name "list_directory"
- :include t
+ :include agental-tool-include
  :function #'agental-tool-ls-tool
  :description
  "List the names of files and subdirectories directly within a specified directory path.
@@ -744,7 +771,7 @@ found in the workspace."
 
 (gptel-make-tool
  :name "read_file_in_workspace"
- :include t
+ :include agental-tool-include
  :function #'agental-tool-read-file-tool
  :description
  (format "Reads and returns the content of a specified file.
@@ -755,7 +782,6 @@ Handles text files. For text files, it can read specific line ranges.
 Supports line numbers display in cat -n style."
          agental-tool-max-read-length)
  :confirm nil
- :include nil
  :args
  `((:name "path" :type string :description "Path to the file, relative to workspace root, e.g. 'src/main.py' or 'README.md'")
    (:name
@@ -885,13 +911,12 @@ context including any pending changes, creations, or deletions."
 
 (gptel-make-tool
  :name "search_in_workspace"
- :include t
+ :include agental-tool-include
  :function #'agental-tool-search-tool
  :description
  (concat
   "Search for patterns within the workspace using ripgrep\n")
  :confirm nil
- :include nil
  :args
  `((:name
     "pattern"
@@ -1041,7 +1066,7 @@ containing the file's outline with function/class names and their line numbers."
 
 (gptel-make-tool
  :name "get_file_outline"
- :include t
+ :include agental-tool-include
  :function #'agental-tool-get-file-outline-tool
  :description
  "Get the outline (structure) of a file.
@@ -1390,7 +1415,7 @@ operation fails."
 
 (gptel-make-tool
  :name "edit_file_in_workspace"
- :include t
+ :include agental-tool-include
  :function #'agental-tool-edit-file-tool
  :description
  "Make multiple exact string replacements in a single file.
@@ -1401,7 +1426,6 @@ If any edit fails, no changes are made.
 Requires user approval before applying changes.
 Returns success or error message based on user action and edit results."
  :confirm nil
- :include nil
  :args
  `((:name "path" :type string :description "Path to the file in workspace, relative to workspace root, e.g. 'src/main.py' or 'README.md'")
    (:name
@@ -1562,7 +1586,7 @@ Handles text content with proper encoding."
 
 (gptel-make-tool
  :name "write_file_in_workspace"
- :include t
+ :include agental-tool-include
  :function #'agental-tool-write-file-tool
  :description
  (concat
@@ -1574,7 +1598,6 @@ Handles text content with proper encoding."
   "Returns a success message on successful write, or an error message on failure.\n"
   "Requires user approval before writing (C-c C-c to approve, C-c C-k to reject).")
  :confirm nil
- :include nil
  :args '((:name "path" :type string :description "Path to the file, relative to workspace root, e.g. 'src/main.py' or 'README.md'")
          (:name
           "content"
@@ -1668,7 +1691,7 @@ COUNT is the number of results to return (default 5)."
 
 (gptel-make-tool
  :name "WebSearch"
- :include t
+ :include agental-tool-include
  :function 'agental-tool--web-search-eww
  :description "Search the web for the first five results to a query.  The query can be an arbitrary string.  Returns the top five results from the search engine as a list of plists.  Each object has the keys `:url` and `:excerpt` for the corresponding search result.
 
@@ -1682,7 +1705,6 @@ If required, consider using the url as the input to the `Read` tool to get the c
                 :type integer
                 :description "Number of results to return (default 5)"
                 :optional t))
- :include t
  :async t
  :category "agental")
 
@@ -1744,7 +1766,7 @@ cleanup."
 (gptel-make-tool
  :function #'agental-tool--read-url
  :name "WebFetch"
- :include t
+ :include agental-tool-include
  :description "Fetch and read the contents of a URL.
 
 - Returns the text of the URL (not HTML) formatted for reading.
@@ -1753,7 +1775,6 @@ cleanup."
            :type "string"
            :description "The URL to read"))
  :async t
- :include t
  :category "agental")
 
 
@@ -1924,7 +1945,7 @@ Error details: %S"
 
 (gptel-make-tool
  :name "RunAgent"
- :include t
+ :include agental-tool-include
  :description "Launch a specialized agent to handle complex, multi-step tasks autonomously.  \
 Agents run independently and return results in one message.  \
 Use for open-ended searches, complex research, or when uncertain about finding results in first few tries."
@@ -1943,7 +1964,7 @@ Should include exactly what information the agent should return."))
  :category "agental"
  :async t
  :confirm t
- :include t)
+ :include agental-tool-include)
 
 ;;; Register tool call preview functions
 (pcase-dolist (`(,tool-name . ,setup-fn)
@@ -1951,6 +1972,27 @@ Should include exactly what information the agent should return."))
   (setf (alist-get tool-name gptel--tool-preview-alist
                    nil nil #'equal)
         setup-fn))
+
+(defconst agental-tool--registered-tools
+  '("find_files" "list_directory" "read_file_in_workspace"
+    "search_in_workspace" "get_file_outline" "edit_file_in_workspace"
+    "write_file_in_workspace" "WebSearch" "WebFetch" "RunAgent")
+  "Names of the tools Agental registers with gptel.")
+
+(defun agental-tool--apply-include (include)
+  "Set the `:include' slot of every Agental tool to INCLUDE."
+  (dolist (category gptel--known-tools)
+    (dolist (cell (cdr category))
+      (when (member (car cell) agental-tool--registered-tools)
+        (setf (gptel-tool-include (cdr cell)) include)))))
+
+(defun agental-tool-apply-include ()
+  "Apply `agental-tool-include' to the tools already registered with gptel.
+
+Agental\='s tools pick up `agental-tool-include' when `agental-tool' is
+loaded, so call this after changing the variable in a running session."
+  (interactive)
+  (agental-tool--apply-include agental-tool-include))
 
 (provide 'agental-tool)
 ;;; agental-tool.el ends here
